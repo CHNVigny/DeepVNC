@@ -1,0 +1,504 @@
+#include <pthread.h>
+#include <semaphore.h>
+
+#include "vncEncodeRRE.h"
+#include "CNNEncoder.h"
+#include "huffman.h"
+
+
+#define CEIL_DIV(x, y) (((x) + (y) - 1) / (y))
+#define ALIGN(x,y) (CEIL_DIV(x,y)*(y))
+#define CARD(bpp) CARD##bpp
+
+bool CheckSolidTile(BYTE* source, int x, int y, int w, int h,
+	CARD32* colorPtr, bool needSameColor, UINT bytesPerRow, CARD8 bitsPerPixel);
+bool CheckSolidTile8(BYTE* source, int x, int y, int w, int h,
+	CARD32* colorPtr, bool needSameColor, UINT bytesPerRow);
+bool CheckSolidTile16(BYTE* source, int x, int y, int w, int h,
+	CARD32* colorPtr, bool needSameColor, UINT bytesPerRow);
+bool CheckSolidTile32(BYTE* source, int x, int y, int w, int h,
+	CARD32* colorPtr, bool needSameColor, UINT bytesPerRow);
+
+
+vncEncodeRRE::vncEncodeRRE()
+{
+	m_buffer = NULL;
+	m_bufflen = 0;
+}
+
+vncEncodeRRE::~vncEncodeRRE()
+{
+	if (m_buffer != NULL)
+	{
+		delete[] m_buffer;
+		m_buffer = NULL;
+	}
+}
+
+void
+vncEncodeRRE::Init()
+{
+	vncEncoder::Init();
+}
+
+UINT
+vncEncodeRRE::RequiredBuffSize(UINT width, UINT height)//返回需要多大的更新buffer，单位是字节
+{
+	return vncEncoder::RequiredBuffSize(width, height);
+}
+
+UINT
+vncEncodeRRE::NumCodedRects(RECT& rect)
+{
+	return 1;
+}
+
+//feature add @2022/05/10 WHJ
+
+bool
+CheckSolidTile(BYTE* source, int x, int y, int w, int h,
+	CARD32* colorPtr, bool needSameColor, UINT bytesPerRow, CARD8 bitsPerPixel=32)
+{
+	switch (bitsPerPixel) {
+	case 32:
+		return CheckSolidTile32(source, x, y, w, h, colorPtr, needSameColor, bytesPerRow);
+	case 16:
+		return CheckSolidTile16(source, x, y, w, h, colorPtr, needSameColor, bytesPerRow);
+	default:
+		return CheckSolidTile8(source, x, y, w, h, colorPtr, needSameColor, bytesPerRow);
+	}
+}
+
+#define DEFINE_CHECK_SOLID_FUNCTION(bpp)									  \
+																			  \
+bool 																		  \
+CheckSolidTile##bpp(BYTE *source, int x, int y, int w, int h,                 \
+									CARD32 *colorPtr, bool needSameColor, UINT bytesPerRow)	  \
+{																			  \
+	CARD##bpp *fbptr;														  \
+	CARD##bpp colorValue;													  \
+	int dx, dy; 															  \
+																			  \
+	fbptr = (CARD##bpp *)													  \
+		&source[y * bytesPerRow + x * (bpp/8)];							      \
+																			  \
+	colorValue = *fbptr;													  \
+	if (needSameColor && (CARD32)colorValue != *colorPtr)					  \
+		return false;														  \
+																			  \
+	for (dy = 0; dy < h; dy++) {											  \
+		for (dx = 0; dx < w; dx++) {										  \
+			if (colorValue != fbptr[dx])									  \
+				return false;												  \
+		}																	  \
+		fbptr = (CARD##bpp *)((BYTE *)fbptr + bytesPerRow);				  \
+	}																		  \
+																			  \
+	*colorPtr = (CARD32)colorValue; 										  \
+	return true;															  \
+}
+
+DEFINE_CHECK_SOLID_FUNCTION(8)
+DEFINE_CHECK_SOLID_FUNCTION(16)
+DEFINE_CHECK_SOLID_FUNCTION(32)
+
+//end
+
+typedef struct {
+	CARD32 origin_width;
+	CARD32 origin_height;
+	CARD32 padded_width;
+	CARD32 padded_height;
+	CARD32 origin_x;
+	CARD32 origin_y;
+	CARD32 data_size;
+}CNNEncBlock;
+
+typedef struct {
+	CARD32 block_num;
+	CARD32 data_size;
+	CARD32 decompressed_size;
+	CARD32 checksum;
+}rfbCNNHeader;
+
+#define sz_rfcCNNHeader (sizeof(rfbCNNHeader))//size rfb cnn header
+
+#define RectSizeValidate(r) ((r.right - r.left) <= 480 && (r.bottom - r.top) <= 480 && (r.right - r.left) * (r.bottom - r.top) <= 320 * 320)//如果长宽大于480或者面积大于320*320，就会平均分成两个图片
+#define AreaOfRect(r) ((r.right - r.left) * (r.bottom - r.top))
+
+typedef struct {
+	UINT            operation = 0;//0的时候代表这是个解码任务，是1的时候代表这是个汇总结果的任务
+	CNNEncBlock*     block_info;
+	UINT            bytes_per_row;
+	UINT            valid_wid;
+	UINT            valid_hei;
+	rfbPixelFormat*  pixel_formate;
+	BYTE*           source;
+	vector<char>*    model_output;
+	sem_t*          sem_finished;
+} CNNEncTaskInfo;
+
+#define TASK_THREAD_NUM 6
+
+namespace cnn_static {
+	pthread_mutex_t mutex_queue;
+	std::list<CNNEncTaskInfo> task_queue;
+	sem_t sem_queue;
+	bool multi_thread_inited = false;
+
+	void* cnn_task_thread_function(void* param);
+
+	pthread_t task_threads[TASK_THREAD_NUM];
+
+	void inline init_multi_thread() {
+		if (!multi_thread_inited) {
+			pthread_mutex_init(&mutex_queue, nullptr);
+			sem_init(&sem_queue, 0, 0);
+			for (int i = 0; i < TASK_THREAD_NUM; i++) {
+				pthread_create(&task_threads[i], nullptr, cnn_task_thread_function, nullptr);
+			}
+			multi_thread_inited = true;
+		}
+	}
+
+	void* cnn_task_thread_function(void* param) {
+		OrtEnvInstance* p_ort = new OrtEnvInstance(false);
+		CNNEncoder* p_encoder = new CNNEncoder(p_ort, "encoder_256.onnx", 480, 480, 192, nullptr);
+		vector<float> model_input;
+		while (1) {
+			sem_wait(&sem_queue);
+			pthread_mutex_lock(&mutex_queue);
+			CNNEncTaskInfo task = task_queue.front();//往task_queue里添加task。
+			task_queue.pop_front();
+			pthread_mutex_unlock(&mutex_queue);
+
+			if (task.operation == 1) {
+				memcpy(task.source, task.block_info, sizeof(CNNEncBlock));
+				memcpy(task.source + sizeof(CNNEncBlock), task.model_output->data(), task.model_output->size());
+				sem_post(task.sem_finished);
+				continue;
+			}
+
+			const UINT X = task.block_info->origin_x;
+			const UINT Y = task.block_info->origin_y;
+			const UINT wid = task.block_info->origin_width;
+			const UINT hei = task.block_info->origin_height;
+			UINT W = task.block_info->padded_width;
+			UINT H = task.block_info->padded_height;
+
+			bool raw = false;
+			bool solidRect = false;
+			switch (task.pixel_formate->bitsPerPixel) {
+			case 32:
+				CARD32 singlePixel = 0;
+				int single_ori_offset = (Y * task.bytes_per_row) + X * (task.pixel_formate->bitsPerPixel / 8);
+				singlePixel = *((CARD32*)(task.source + single_ori_offset));
+				if (CheckSolidTile(task.source, X, Y, wid, hei, &singlePixel, true, task.bytes_per_row, task.pixel_formate->bitsPerPixel)) {//单色区域
+					solidRect = true;
+				}
+				else if (W == 0 || H == 0) {//不是单色区域但是太小了没划分
+					raw = true;//不压缩，直接发送图像数据。
+					W = wid;
+					H = hei;
+				}
+
+				
+				if (solidRect) {
+					task.model_output->assign(sizeof(singlePixel), 0);
+					memcpy(task.model_output->data(), &singlePixel, sizeof(singlePixel));
+					task.block_info->data_size = task.pixel_formate->bitsPerPixel / 8;
+				}
+				else {
+					model_input.assign(W * H * 3, 0);//w*h*3的空间全部初始化成0。
+					int offset = 0;
+					int ori_offset = 0;
+					if (task.pixel_formate->bitsPerPixel == 32) {
+						for (int h = 0; h < H; h++) {
+							if (h < task.valid_hei) {
+								offset = h * W;//原始数据是HWC格式的
+								ori_offset = ((h + Y) * task.bytes_per_row) + X * (32 / 8);//要读取的图像区域的索引
+								CARD32 pixel = 0;
+								for (int w = 0; w < W; w++) {
+									if (w < task.valid_wid) {
+										pixel = *((CARD32*)(task.source + ori_offset));
+										ori_offset += (32 / 8);
+									}
+									model_input[offset] = (float)((pixel >> task.pixel_formate->redShift) & task.pixel_formate->redMax) / task.pixel_formate->redMax;
+									model_input[offset + W * H] = (float)((pixel >> task.pixel_formate->greenShift) & task.pixel_formate->greenMax) / task.pixel_formate->greenMax;
+									model_input[offset + W * H * 2] = (float)((pixel >> task.pixel_formate->blueShift) & task.pixel_formate->blueMax) / task.pixel_formate->blueMax;
+									offset++;
+								}
+							}
+							else {
+								memcpy(model_input.data() + (h * W), model_input.data() + (offset - W), sizeof(float) * W);
+								memcpy(model_input.data() + (h * W) + (W * H), model_input.data() + (offset - W) + (W * H), sizeof(float) * W);
+								memcpy(model_input.data() + (h * W) + (W * H * 2), model_input.data() + (offset - W) + (W * H * 2), sizeof(float) * W);//@20220430 bug fixed
+							}
+						}
+					}
+
+					if (raw) {
+						task.model_output->assign(W * H * sizeof(float) * 3, 0);
+						memcpy(task.model_output->data(), model_input.data(), task.model_output->size());
+					}
+					else if (p_encoder->encode_chw(&model_input, task.model_output, W, H) <= 0) {
+						printf("Encode Error\n");
+						exit(-1);
+					}
+					task.block_info->data_size = task.model_output->size();
+				}
+				break;
+			case 16:
+				CARD16 singlePixel = 0;
+				int single_ori_offset = (Y * task.bytes_per_row) + X * (task.pixel_formate->bitsPerPixel / 8);
+				singlePixel = *((CARD16*)(task.source + single_ori_offset));
+				if (CheckSolidTile(task.source, X, Y, wid, hei, &singlePixel, true, task.bytes_per_row, task.pixel_formate->bitsPerPixel)) {//单色区域
+					solidRect = true;
+				}
+				else if (W == 0 || H == 0) {//不是单色区域但是太小了没划分
+					raw = true;//不压缩，直接发送图像数据。
+					W = wid;
+					H = hei;
+				}
+
+
+				if (solidRect) {
+					memcpy(task.model_output->data(), &singlePixel, sizeof(singlePixel));
+					task.block_info->data_size = task.pixel_formate->bitsPerPixel / 8;
+				}
+				else {
+					model_input.assign(W * H * 3, 0);//w*h*3的空间全部初始化成0。
+					int offset = 0;
+					int ori_offset = 0;
+					if (task.pixel_formate->bitsPerPixel == 32) {
+						for (int h = 0; h < H; h++) {
+							if (h < task.valid_hei) {
+								offset = h * W;//原始数据是HWC格式的
+								ori_offset = ((h + Y) * task.bytes_per_row) + X * (32 / 8);//要读取的图像区域的索引
+								CARD32 pixel = 0;
+								for (int w = 0; w < W; w++) {
+									if (w < task.valid_wid) {
+										pixel = *((CARD32*)(task.source + ori_offset));
+										ori_offset += (32 / 8);
+									}
+									model_input[offset] = (float)((pixel >> task.pixel_formate->redShift) & task.pixel_formate->redMax) / task.pixel_formate->redMax;
+									model_input[offset + W * H] = (float)((pixel >> task.pixel_formate->greenShift) & task.pixel_formate->greenMax) / task.pixel_formate->greenMax;
+									model_input[offset + W * H * 2] = (float)((pixel >> task.pixel_formate->blueShift) & task.pixel_formate->blueMax) / task.pixel_formate->blueMax;
+									offset++;
+								}
+							}
+							else {
+								memcpy(model_input.data() + (h * W), model_input.data() + (offset - W), sizeof(float) * W);
+								memcpy(model_input.data() + (h * W) + (W * H), model_input.data() + (offset - W) + (W * H), sizeof(float) * W);
+								memcpy(model_input.data() + (h * W) + (W * H * 2), model_input.data() + (offset - W) + (W * H * 2), sizeof(float) * W);//@20220430 bug fixed
+							}
+						}
+					}
+
+					if (raw) {
+						task.model_output->assign(W * H * sizeof(float) * 3, 0);
+						memcpy(task.model_output->data(), model_input.data(), task.model_output->size());
+					}
+					else if (p_encoder->encode_chw(&model_input, task.model_output, W, H) <= 0) {
+						printf("Encode Error\n");
+						exit(-1);
+					}
+					task.block_info->data_size = task.model_output->size();
+				}
+				break;
+			default:
+				CARD8 singlePixel = 0;
+				int single_ori_offset = (Y * task.bytes_per_row) + X * (task.pixel_formate->bitsPerPixel / 8);
+				singlePixel = *((CARD8*)(task.source + single_ori_offset));
+
+			}
+			
+
+			
+
+			sem_post(task.sem_finished);
+		}
+
+		return nullptr;
+	}
+}
+
+
+inline UINT
+vncEncodeRRE::EncodeRect(BYTE* source, BYTE* dest, const RECT& rect, int offx, int offy)//source是帧缓冲区的原始像素数据，dest是发送缓冲区。
+{
+	if (!m_localformat.bitsPerPixel == 32) {
+		printf("Not support bpp %d\n", m_localformat.bitsPerPixel);
+		exit(0);
+	}
+
+	if (rect.left != 0x123456) {
+		printf("Not support rectangle formate\n");
+		exit(0);
+	}
+
+	std::list<RECT>** pp_list = (std::list<RECT>**)(&rect.top);
+	std::list<RECT>* p_list = *pp_list;
+
+	RECT main_rect = p_list->back();
+	p_list->pop_back();
+	if (main_rect.left || main_rect.top) {
+		for (auto& r : *p_list) {
+			r.left = r.left - main_rect.left;
+			r.right = r.right - main_rect.left;
+			r.top = r.top - main_rect.top;
+			r.bottom = r.bottom - main_rect.top;
+		}
+	}
+
+	UINT min_x = 0xffffff, min_y = 0xffffff, max_x = 0, max_y = 0;
+	for (auto& r : *p_list) {
+		max_x = max(max_x, r.right);
+		max_y = max(max_y, r.bottom);
+		min_x = min(min_x, r.left);
+		min_y = min(min_y, r.top);
+	}
+
+	cnn_static::init_multi_thread();
+
+	// Create the rectangle header
+	rfbFramebufferUpdateRectHeader* surh = (rfbFramebufferUpdateRectHeader*)dest;
+	surh->r.x = (CARD16)min_x;
+	surh->r.y = (CARD16)min_y;
+	surh->r.w = (CARD16)(max_x - min_x);
+	surh->r.h = (CARD16)(max_y - min_y);
+	surh->r.x = Swap16IfLE(surh->r.x - offx);
+	surh->r.y = Swap16IfLE(surh->r.y - offy);
+	surh->r.w = Swap16IfLE(surh->r.w);
+	surh->r.h = Swap16IfLE(surh->r.h);
+	surh->encoding = Swap32IfLE(rfbEncodingRRE);
+
+	std::vector<RECT> rects_finished;
+	rects_finished.reserve(20);//扩容至拥有20个空间。
+	for (auto& rec : *p_list) {
+		if (RectSizeValidate(rec) || AreaOfRect(rec) <= 2048) {
+			rects_finished.push_back(rec);//太小的不分块
+		}
+		else {
+			int x_num = CEIL_DIV(rec.right - rec.left, 320);
+			int y_num = CEIL_DIV(rec.bottom - rec.top, 320);
+			int x_step = (rec.right - rec.left) / x_num;
+			int y_step = (rec.bottom - rec.top) / y_num;
+			RECT r = rec;
+			rects_finished.reserve(x_num * y_num);
+			for (int y = 0; y < y_num; y++) {
+				r.top = rec.top + y * y_step;
+				r.bottom = (y == y_num - 1) ? rec.bottom : (r.top + y_step);
+				for (int x = 0; x < x_num; x++) {
+					r.left = rec.left + x * x_step;
+					r.right = (x == x_num - 1) ? rec.right : (r.left + x_step);
+					rects_finished.push_back(r);
+				}
+			}
+		}
+	}
+
+	delete p_list;
+
+	rfbCNNHeader* cnnheader = (rfbCNNHeader*)(dest + sz_rfbFramebufferUpdateRectHeader);
+	cnnheader->block_num = rects_finished.size();//分割后的方块的数量
+	cnnheader->decompressed_size = 0;
+
+	vector<vector<char>> model_outputs;
+	vector<CNNEncBlock> block_infos;
+	vector<CNNEncTaskInfo> task_infos;
+	block_infos.assign(rects_finished.size(), CNNEncBlock());//每个块对应一个头，一个output的vector，一个任务信息。都是空的。
+	model_outputs.assign(rects_finished.size(), vector<char>());
+	task_infos.assign(rects_finished.size(), CNNEncTaskInfo());
+
+	sem_t sem;
+	sem_init(&sem, 0, 0);
+
+	for (int i = 0; i < rects_finished.size(); i++) {
+		block_infos[i].origin_x = rects_finished[i].left;
+		block_infos[i].origin_y = rects_finished[i].top;
+		block_infos[i].origin_width = rects_finished[i].right - rects_finished[i].left;
+		block_infos[i].origin_height = rects_finished[i].bottom - rects_finished[i].top;
+		//if (AreaOfRect(rects_finished[i]) <= 2048) {
+	    if (AreaOfRect(rects_finished[i]) <= 100) {
+			block_infos[i].padded_width = block_infos[i].padded_height = 0;
+		}
+		else {
+			block_infos[i].padded_width = ALIGN(block_infos[i].origin_width, 16);
+			block_infos[i].padded_height = ALIGN(block_infos[i].origin_height, 16);
+		}
+
+		CNNEncTaskInfo &task = task_infos[i];
+		task.block_info = &block_infos[i];
+		task.bytes_per_row = m_bytesPerRow;//每行有多少个字节。
+		task.pixel_formate = &m_localformat;
+		task.model_output = &model_outputs[i];
+		task.sem_finished = &sem;
+		task.source = source;
+		task.valid_wid = max_x - rects_finished[i].left;
+		task.valid_hei = max_y - rects_finished[i].top;
+
+		pthread_mutex_lock(&cnn_static::mutex_queue);
+		cnn_static::task_queue.push_back(task);
+		pthread_mutex_unlock(&cnn_static::mutex_queue);
+		sem_post(&cnn_static::sem_queue);
+	}
+
+	for (int i = 0; i < rects_finished.size(); i++) {
+		sem_wait(&sem);
+	}
+
+	cnnheader->decompressed_size = 0;
+	for (auto& vec : model_outputs) {
+		cnnheader->decompressed_size += sizeof(CNNEncBlock);
+		cnnheader->decompressed_size += vec.size();
+	}
+
+	vector<char> decompressed;
+	decompressed.assign(cnnheader->decompressed_size, 0);
+
+	size_t data_offset = 0;
+	for (int i = 0; i < rects_finished.size(); i++) {
+		task_infos[i].operation = 1;
+		task_infos[i].source = (BYTE*)(decompressed.data()) + data_offset;//多线程任务中，写完了source就相当于写完了decompressed
+		task_infos[i].model_output = &(model_outputs[i]);
+		task_infos[i].block_info = &(block_infos[i]);
+		pthread_mutex_lock(&cnn_static::mutex_queue);
+		cnn_static::task_queue.push_back(task_infos[i]);
+		pthread_mutex_unlock(&cnn_static::mutex_queue);
+		sem_post(&cnn_static::sem_queue);
+		data_offset += sizeof(CNNEncBlock);
+		data_offset += model_outputs[i].size();
+	}
+
+	for (int i = 0; i < rects_finished.size(); i++) {
+		sem_wait(&sem);
+	}
+	sem_destroy(&sem);
+
+	vector<char> compressed;
+	huffman_compress(&decompressed, &compressed);
+
+	BYTE* data_address = dest + sz_rfbFramebufferUpdateRectHeader + sz_rfcCNNHeader;
+	memcpy(data_address, compressed.data(), compressed.size());
+
+	cnnheader->data_size = compressed.size();
+
+	CARD32 cs = 0;
+	for (BYTE b : compressed) cs = (cs + b) & 0xff;
+	cnnheader->checksum = cs;
+
+	// Update statistics for this rectangle.
+	rectangleOverhead += sz_rfbFramebufferUpdateRectHeader;
+	dataSize += decompressed.size();
+	encodedSize += sz_rfcCNNHeader + compressed.size();
+	transmittedSize += sz_rfbFramebufferUpdateRectHeader + sz_rfcCNNHeader + compressed.size();
+	vnclog.Print(LL_INTINFO, VNCLOG("send size :%.4f KB\n", float(sz_rfbFramebufferUpdateRectHeader + sz_rfcCNNHeader + compressed.size()) / 1024));
+	//std::cout << "send size:" << float(sz_rfbFramebufferUpdateRectHeader + sz_rfcCNNHeader + compressed.size())/1024 << "KB" << std::endl;
+	// Return the amount of data sent	
+	return sz_rfbFramebufferUpdateRectHeader + sz_rfcCNNHeader + compressed.size();
+}
+
+
+
+

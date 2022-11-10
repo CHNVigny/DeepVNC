@@ -1,0 +1,284 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="packages\Microsoft.ML.OnnxRuntime.1.11.0\build\native\Microsoft.ML.OnnxRuntime.props" Condition="Exists('packages\Microsoft.ML.OnnxRuntime.1.11.0\build\native\Microsoft.ML.OnnxRuntime.props')" />
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>17.0</VCProjectVersion>
+    <ProjectGuid>{D5828715-F3FF-478D-86C8-F9518C3EF383}</ProjectGuid>
+    <RootNamespace>vncviewer</RootNamespace>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <PlatformToolset>v143</PlatformToolset>
+    <UseOfMfc>false</UseOfMfc>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <PlatformToolset>v143</PlatformToolset>
+    <UseOfMfc>false</UseOfMfc>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(VCTargetsPath)Microsoft.CPP.UpgradeFromVC60.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(VCTargetsPath)Microsoft.CPP.UpgradeFromVC60.props" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>17.0.31912.81</_ProjectFileVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <OutDir>$(SolutionDir)$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)$(Configuration)\$(ProjectName)\</IntDir>
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <OutDir>$(SolutionDir)$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)$(Configuration)\$(ProjectName)\</IntDir>
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Midl>
+      <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MkTypLibCompatible>true</MkTypLibCompatible>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <TargetEnvironment>Win32</TargetEnvironment>
+    </Midl>
+    <ClCompile>
+      <Optimization>Disabled</Optimization>
+      <AdditionalIncludeDirectories>omnithread;..;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>HAVE_STRUCT_TIMESPEC;_DEBUG;WIN32;_WINDOWS;__NT__;_WINSTATIC;__WIN32__;XMD_H;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MinimalRebuild>true</MinimalRebuild>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <BrowseInformation>true</BrowseInformation>
+      <WarningLevel>Level3</WarningLevel>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <Culture>0x0409</Culture>
+    </ResourceCompile>
+    <PreLinkEvent>
+      <Message>Updating BuildTime</Message>
+      <Command>cl /MTd /Fo".\Debug/" /Fd".\Debug/" /nologo /c BuildTime.cpp</Command>
+    </PreLinkEvent>
+    <Link>
+      <AdditionalDependencies>packages\pthreads.2.9.1.4\build\native\lib\v100\Win32\Release\dynamic\cdecl\libpthread.lib;winmm.lib;wsock32.lib;comctl32.lib;htmlhelp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <AdditionalManifestDependencies>type=%27win32%27 name=%27Microsoft.Windows.Common-Controls%27 version=%276.0.0.0%27 processorArchitecture=%27X86%27 publicKeyToken=%276595b64144ccf1df%27 language=%27*%27;%(AdditionalManifestDependencies)</AdditionalManifestDependencies>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SubSystem>Windows</SubSystem>
+      <RandomizedBaseAddress>false</RandomizedBaseAddress>
+      <DataExecutionPrevention />
+      <TargetMachine>MachineX86</TargetMachine>
+      <AdditionalOptions>/SAFESEH:NO %(AdditionalOptions)</AdditionalOptions>
+    </Link>
+    <Bscmake>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+    </Bscmake>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Midl>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MkTypLibCompatible>true</MkTypLibCompatible>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <TargetEnvironment>Win32</TargetEnvironment>
+    </Midl>
+    <ClCompile>
+      <Optimization>MaxSpeed</Optimization>
+      <InlineFunctionExpansion>Default</InlineFunctionExpansion>
+      <AdditionalIncludeDirectories>omnithread;..;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>HAVE_STRUCT_TIMESPEC;NDEBUG;WIN32;_WINDOWS;__NT__;_WINSTATIC;__WIN32__;XMD_H;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <StringPooling>true</StringPooling>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <BrowseInformation>true</BrowseInformation>
+      <WarningLevel>Level3</WarningLevel>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <Culture>0x0409</Culture>
+    </ResourceCompile>
+    <PreLinkEvent>
+      <Message>Updating BuildTime</Message>
+      <Command>cl /MT /Fo".\Release/" /Fd".\Release/" /nologo /c BuildTime.cpp</Command>
+    </PreLinkEvent>
+    <Link>
+      <AdditionalDependencies>packages\pthreads.2.9.1.4\build\native\lib\v100\Win32\Release\dynamic\cdecl\libpthread.lib;winmm.lib;wsock32.lib;comctl32.lib;htmlhelp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <AdditionalManifestDependencies>type=%27win32%27 name=%27Microsoft.Windows.Common-Controls%27 version=%276.0.0.0%27 processorArchitecture=%27X86%27 publicKeyToken=%276595b64144ccf1df%27 language=%27*%27;%(AdditionalManifestDependencies)</AdditionalManifestDependencies>
+      <SubSystem>Windows</SubSystem>
+      <RandomizedBaseAddress>false</RandomizedBaseAddress>
+      <DataExecutionPrevention />
+      <TargetMachine>MachineX86</TargetMachine>
+      <AdditionalOptions>/SAFESEH:NO %(AdditionalOptions)</AdditionalOptions>
+    </Link>
+    <Bscmake>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+    </Bscmake>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <None Include="decoder_256.onnx" />
+    <None Include="decoder_4096.onnx" />
+    <None Include="encoder_256.onnx" />
+    <None Include="encoder_4096.onnx" />
+    <None Include="packages.config" />
+    <CopyFileToFolders Include="packages\pthreads.redist.2.9.1.4\build\native\bin\v100\Win32\Release\dynamic\cdecl\libpthread.dll">
+      <FileType>Document</FileType>
+    </CopyFileToFolders>
+    <None Include="res\cursor1.cur" />
+    <None Include="res\nocursor.cur" />
+    <None Include="res\smalldot.cur" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="res\filereload.ico" />
+    <Image Include="res\fileup.ico" />
+    <Image Include="res\idr_tray.ico" />
+    <Image Include="res\tightvnc.bmp" />
+    <Image Include="res\tightvnc48.bmp" />
+    <Image Include="res\toolbar.bmp" />
+    <Image Include="res\toolbar1.bmp" />
+    <Image Include="res\vnc.bmp" />
+    <Image Include="res\vnc32.BMP" />
+    <Image Include="res\vncviewer.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="AboutBox.cpp" />
+    <ClCompile Include="BitIoStream.cpp" />
+    <ClCompile Include="BuildTime.cpp" />
+    <ClCompile Include="CanonicalCode.cpp" />
+    <ClCompile Include="CapsContainer.cpp" />
+    <ClCompile Include="ClientConnection.cpp" />
+    <ClCompile Include="ClientConnectionClipboard.cpp" />
+    <ClCompile Include="ClientConnectionCopyRect.cpp" />
+    <ClCompile Include="ClientConnectionCoRRE.cpp" />
+    <ClCompile Include="ClientConnectionCursor.cpp" />
+    <ClCompile Include="ClientConnectionFile.cpp" />
+    <ClCompile Include="ClientConnectionFullScreen.cpp" />
+    <ClCompile Include="ClientConnectionHextile.cpp" />
+    <ClCompile Include="ClientConnectionRaw.cpp" />
+    <ClCompile Include="ClientConnectionRRE.cpp0" />
+    <ClCompile Include="ClientConnectionRRE.cpp" />
+    <ClCompile Include="ClientConnectionTight.cpp" />
+    <ClCompile Include="ClientConnectionZlib.cpp" />
+    <ClCompile Include="ClientConnectionZlibHex.cpp" />
+    <ClCompile Include="CNNEncoder.cpp" />
+    <ClCompile Include="CodeTree.cpp" />
+    <ClCompile Include="ConnectingDialog.cpp" />
+    <ClCompile Include="d3des.c" />
+    <ClCompile Include="Daemon.cpp" />
+    <ClCompile Include="Exception.cpp" />
+    <ClCompile Include="FileTransfer.cpp" />
+    <ClCompile Include="FileTransferItemInfo.cpp" />
+    <ClCompile Include="FrequencyTable.cpp" />
+    <ClCompile Include="HotKeys.cpp" />
+    <ClCompile Include="huffman.cpp" />
+    <ClCompile Include="HuffmanCoder.cpp" />
+    <ClCompile Include="KeyMap.cpp" />
+    <ClCompile Include="Log.cpp" />
+    <ClCompile Include="LoginAuthDialog.cpp" />
+    <ClCompile Include="SessionDialog.cpp" />
+    <ClCompile Include="stdhdrs.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">stdhdrs.h</PrecompiledHeaderFile>
+    </ClCompile>
+    <ClCompile Include="vncauth.c" />
+    <ClCompile Include="VNCHelp.cpp" />
+    <ClCompile Include="VNCOptions.cpp" />
+    <ClCompile Include="vncviewer.cpp" />
+    <ClCompile Include="VNCviewerApp.cpp" />
+    <ClCompile Include="VNCviewerApp32.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\rfb\rfbproto.h" />
+    <ClInclude Include="AboutBox.h" />
+    <ClInclude Include="BitIoStream.hpp" />
+    <ClInclude Include="CanonicalCode.hpp" />
+    <ClInclude Include="CapsContainer.h" />
+    <ClInclude Include="ClientConnection.h" />
+    <ClInclude Include="CNNEncoder.h" />
+    <ClInclude Include="CodeTree.hpp" />
+    <ClInclude Include="ConnectingDialog.h" />
+    <ClInclude Include="d3des.h" />
+    <ClInclude Include="Daemon.h" />
+    <ClInclude Include="Exception.h" />
+    <ClInclude Include="FileTransfer.h" />
+    <ClInclude Include="FileTransferItemInfo.h" />
+    <ClInclude Include="FrequencyTable.hpp" />
+    <ClInclude Include="HotKeys.h" />
+    <ClInclude Include="huffman.h" />
+    <ClInclude Include="HuffmanCoder.hpp" />
+    <ClInclude Include="KeyMap.h" />
+    <ClInclude Include="keysymdef.h" />
+    <ClInclude Include="Log.h" />
+    <ClInclude Include="LoginAuthDialog.h" />
+    <ClInclude Include="res\resource.h" />
+    <ClInclude Include="rfb.h" />
+    <ClInclude Include="SessionDialog.h" />
+    <ClInclude Include="stdhdrs.h" />
+    <ClInclude Include="vncauth.h" />
+    <ClInclude Include="VNCHelp.h" />
+    <ClInclude Include="VNCOptions.h" />
+    <ClInclude Include="vncviewer.h" />
+    <ClInclude Include="VNCviewerApp.h" />
+    <ClInclude Include="VNCviewerApp32.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="COPYING.txt" />
+    <Text Include="History.txt" />
+    <Text Include="LICENCE.txt" />
+    <Text Include="ToDo.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="res\vncviewer.rc">
+      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">res;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">res;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="libjpeg\libjpeg.vcxproj">
+      <Project>{b6f84561-61fe-477d-ae2e-d4152a247fb1}</Project>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
+    <ProjectReference Include="omnithread\omnithread.vcxproj">
+      <Project>{0434bf2b-6310-4bb5-804e-f7a11c074ca2}</Project>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
+    <ProjectReference Include="zlib\zlib.vcxproj">
+      <Project>{528e481b-ff16-491b-84a8-07ed2dd4234b}</Project>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+    <Import Project="packages\Microsoft.ML.OnnxRuntime.1.11.0\build\native\Microsoft.ML.OnnxRuntime.targets" Condition="Exists('packages\Microsoft.ML.OnnxRuntime.1.11.0\build\native\Microsoft.ML.OnnxRuntime.targets')" />
+    <Import Project="packages\pthreads.redist.2.9.1.4\build\native\pthreads.redist.targets" Condition="Exists('packages\pthreads.redist.2.9.1.4\build\native\pthreads.redist.targets')" />
+    <Import Project="packages\pthreads.2.9.1.4\build\native\pthreads.targets" Condition="Exists('packages\pthreads.2.9.1.4\build\native\pthreads.targets')" />
+  </ImportGroup>
+  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <ErrorText>这台计算机上缺少此项目引用的 NuGet 程序包。使用“NuGet 程序包还原”可下载这些程序包。有关更多信息，请参见 http://go.microsoft.com/fwlink/?LinkID=322105。缺少的文件是 {0}。</ErrorText>
+    </PropertyGroup>
+    <Error Condition="!Exists('packages\Microsoft.ML.OnnxRuntime.1.11.0\build\native\Microsoft.ML.OnnxRuntime.props')" Text="$([System.String]::Format('$(ErrorText)', 'packages\Microsoft.ML.OnnxRuntime.1.11.0\build\native\Microsoft.ML.OnnxRuntime.props'))" />
+    <Error Condition="!Exists('packages\Microsoft.ML.OnnxRuntime.1.11.0\build\native\Microsoft.ML.OnnxRuntime.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\Microsoft.ML.OnnxRuntime.1.11.0\build\native\Microsoft.ML.OnnxRuntime.targets'))" />
+    <Error Condition="!Exists('packages\pthreads.redist.2.9.1.4\build\native\pthreads.redist.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\pthreads.redist.2.9.1.4\build\native\pthreads.redist.targets'))" />
+    <Error Condition="!Exists('packages\pthreads.2.9.1.4\build\native\pthreads.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\pthreads.2.9.1.4\build\native\pthreads.targets'))" />
+  </Target>
+</Project>

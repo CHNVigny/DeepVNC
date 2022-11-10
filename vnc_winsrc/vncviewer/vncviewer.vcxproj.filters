@@ -1,0 +1,149 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Resources">
+      <UniqueIdentifier>{a7af07e9-5d1a-43f2-bcb6-555914d55006}</UniqueIdentifier>
+      <Extensions>ico;cur;bmp;dlg;rc2;rct;bin;cnt;rtf;gif;jpg;jpeg;jpe</Extensions>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="res\cursor1.cur">
+      <Filter>Resources</Filter>
+    </None>
+    <None Include="res\nocursor.cur">
+      <Filter>Resources</Filter>
+    </None>
+    <None Include="res\smalldot.cur">
+      <Filter>Resources</Filter>
+    </None>
+    <None Include="packages.config" />
+    <None Include="$(MSBuildThisFileDirectory)..\..\runtimes\win-x64\native\onnxruntime_providers_shared.dll" />
+    <None Include="$(MSBuildThisFileDirectory)..\..\runtimes\win-x86\native\onnxruntime.dll" />
+    <None Include="decoder_256.onnx" />
+    <None Include="decoder_4096.onnx" />
+    <None Include="encoder_256.onnx" />
+    <None Include="encoder_4096.onnx" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="res\filereload.ico">
+      <Filter>Resources</Filter>
+    </Image>
+    <Image Include="res\fileup.ico">
+      <Filter>Resources</Filter>
+    </Image>
+    <Image Include="res\idr_tray.ico">
+      <Filter>Resources</Filter>
+    </Image>
+    <Image Include="res\tightvnc.bmp">
+      <Filter>Resources</Filter>
+    </Image>
+    <Image Include="res\tightvnc48.bmp">
+      <Filter>Resources</Filter>
+    </Image>
+    <Image Include="res\toolbar.bmp">
+      <Filter>Resources</Filter>
+    </Image>
+    <Image Include="res\toolbar1.bmp">
+      <Filter>Resources</Filter>
+    </Image>
+    <Image Include="res\vnc.bmp">
+      <Filter>Resources</Filter>
+    </Image>
+    <Image Include="res\vnc32.BMP">
+      <Filter>Resources</Filter>
+    </Image>
+    <Image Include="res\vncviewer.ico">
+      <Filter>Resources</Filter>
+    </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="AboutBox.cpp" />
+    <ClCompile Include="BuildTime.cpp" />
+    <ClCompile Include="CapsContainer.cpp" />
+    <ClCompile Include="ClientConnection.cpp" />
+    <ClCompile Include="ClientConnectionClipboard.cpp" />
+    <ClCompile Include="ClientConnectionCopyRect.cpp" />
+    <ClCompile Include="ClientConnectionCoRRE.cpp" />
+    <ClCompile Include="ClientConnectionCursor.cpp" />
+    <ClCompile Include="ClientConnectionFile.cpp" />
+    <ClCompile Include="ClientConnectionFullScreen.cpp" />
+    <ClCompile Include="ClientConnectionHextile.cpp" />
+    <ClCompile Include="ClientConnectionRaw.cpp" />
+    <ClCompile Include="ClientConnectionRRE.cpp0" />
+    <ClCompile Include="ClientConnectionTight.cpp" />
+    <ClCompile Include="ClientConnectionZlib.cpp" />
+    <ClCompile Include="ClientConnectionZlibHex.cpp" />
+    <ClCompile Include="ConnectingDialog.cpp" />
+    <ClCompile Include="d3des.c" />
+    <ClCompile Include="Daemon.cpp" />
+    <ClCompile Include="Exception.cpp" />
+    <ClCompile Include="FileTransfer.cpp" />
+    <ClCompile Include="FileTransferItemInfo.cpp" />
+    <ClCompile Include="HotKeys.cpp" />
+    <ClCompile Include="KeyMap.cpp" />
+    <ClCompile Include="Log.cpp" />
+    <ClCompile Include="LoginAuthDialog.cpp" />
+    <ClCompile Include="SessionDialog.cpp" />
+    <ClCompile Include="stdhdrs.cpp" />
+    <ClCompile Include="vncauth.c" />
+    <ClCompile Include="VNCHelp.cpp" />
+    <ClCompile Include="VNCOptions.cpp" />
+    <ClCompile Include="vncviewer.cpp" />
+    <ClCompile Include="VNCviewerApp.cpp" />
+    <ClCompile Include="VNCviewerApp32.cpp" />
+    <ClCompile Include="BitIoStream.cpp" />
+    <ClCompile Include="CanonicalCode.cpp" />
+    <ClCompile Include="CNNEncoder.cpp" />
+    <ClCompile Include="CodeTree.cpp" />
+    <ClCompile Include="FrequencyTable.cpp" />
+    <ClCompile Include="huffman.cpp" />
+    <ClCompile Include="HuffmanCoder.cpp" />
+    <ClCompile Include="ClientConnectionRRE.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="AboutBox.h" />
+    <ClInclude Include="CapsContainer.h" />
+    <ClInclude Include="ClientConnection.h" />
+    <ClInclude Include="ConnectingDialog.h" />
+    <ClInclude Include="d3des.h" />
+    <ClInclude Include="Daemon.h" />
+    <ClInclude Include="Exception.h" />
+    <ClInclude Include="FileTransfer.h" />
+    <ClInclude Include="FileTransferItemInfo.h" />
+    <ClInclude Include="HotKeys.h" />
+    <ClInclude Include="KeyMap.h" />
+    <ClInclude Include="keysymdef.h" />
+    <ClInclude Include="Log.h" />
+    <ClInclude Include="LoginAuthDialog.h" />
+    <ClInclude Include="res\resource.h" />
+    <ClInclude Include="rfb.h" />
+    <ClInclude Include="..\rfb\rfbproto.h" />
+    <ClInclude Include="SessionDialog.h" />
+    <ClInclude Include="stdhdrs.h" />
+    <ClInclude Include="vncauth.h" />
+    <ClInclude Include="VNCHelp.h" />
+    <ClInclude Include="VNCOptions.h" />
+    <ClInclude Include="vncviewer.h" />
+    <ClInclude Include="VNCviewerApp.h" />
+    <ClInclude Include="VNCviewerApp32.h" />
+    <ClInclude Include="BitIoStream.hpp" />
+    <ClInclude Include="CanonicalCode.hpp" />
+    <ClInclude Include="CNNEncoder.h" />
+    <ClInclude Include="CodeTree.hpp" />
+    <ClInclude Include="FrequencyTable.hpp" />
+    <ClInclude Include="huffman.h" />
+    <ClInclude Include="HuffmanCoder.hpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="COPYING.txt" />
+    <Text Include="History.txt" />
+    <Text Include="LICENCE.txt" />
+    <Text Include="ToDo.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="res\vncviewer.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <CopyFileToFolders Include="packages\pthreads.redist.2.9.1.4\build\native\bin\v100\Win32\Release\dynamic\cdecl\libpthread.dll" />
+  </ItemGroup>
+</Project>
